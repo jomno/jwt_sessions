@@ -52,7 +52,7 @@ module JWTSessions
       refresh_by_uid(&block)
     end
 
-    def refesh_only_refresh(refresh_token, &block)
+    def refresh_only_refresh(refresh_token, &block)
       refresh_token_data(refresh_token)
 
       check_refresh_on_time(&block) if block_given?

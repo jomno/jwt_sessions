@@ -13,15 +13,15 @@ module JWTSessions
                   :refresh_by_access_allowed
 
     def initialize(options = {})
-      @store                     = options.fetch(:store, JWTSessions.token_store)
-      @refresh_payload           = options.fetch(:refresh_payload, {})
-      @payload                   = options.fetch(:payload, {})
-      @access_claims             = options.fetch(:access_claims, {})
-      @refresh_claims            = options.fetch(:refresh_claims, {})
-      @namespace                 = options.fetch(:namespace, nil)
+      @store = options.fetch(:store, JWTSessions.token_store)
+      @refresh_payload = options.fetch(:refresh_payload, {})
+      @payload = options.fetch(:payload, {})
+      @access_claims = options.fetch(:access_claims, {})
+      @refresh_claims = options.fetch(:refresh_claims, {})
+      @namespace = options.fetch(:namespace, nil)
       @refresh_by_access_allowed = options.fetch(:refresh_by_access_allowed, false)
-      @_access_exp               = options.fetch(:access_exp, nil)
-      @_refresh_exp              = options.fetch(:refresh_exp, nil)
+      @_access_exp = options.fetch(:access_exp, nil)
+      @_refresh_exp = options.fetch(:refresh_exp, nil)
     end
 
     def login
@@ -50,6 +50,18 @@ module JWTSessions
     def refresh(refresh_token, &block)
       refresh_token_data(refresh_token)
       refresh_by_uid(&block)
+    end
+
+    def refesh_only_refresh(refresh_token, &block)
+      refresh_token_data(refresh_token)
+
+      check_refresh_on_time(&block) if block_given?
+
+      create_csrf_token
+      create_access_token
+      update_refresh_token
+
+      tokens_hash
     end
 
     def refresh_by_access_payload(&block)
@@ -112,7 +124,7 @@ module JWTSessions
 
     def valid_access_request?(external_csrf_token, external_payload)
       ruid = retrieve_val_from(external_payload, :access, "ruid", "refresh uid")
-      uid  = retrieve_val_from(external_payload, :access, "uid", "access uid")
+      uid = retrieve_val_from(external_payload, :access, "uid", "access uid")
 
       refresh_token = RefreshToken.find(ruid, JWTSessions.token_store, first_match: true)
       return false unless uid == refresh_token.access_uid
@@ -160,7 +172,7 @@ module JWTSessions
 
     def token_uid(token, type, claims)
       token_payload = JWTSessions::Token.decode(token, claims).first
-      uid           = token_payload.fetch("uid", nil)
+      uid = token_payload.fetch("uid", nil)
       if uid.nil?
         message = "#{type.to_s.capitalize} token payload does not contain token uid"
         raise Errors::InvalidPayload, message
@@ -187,7 +199,7 @@ module JWTSessions
         access: access_token,
         access_expires_at: Time.at(@_access.expiration.to_i),
         refresh: refresh_token,
-        refresh_expires_at: Time.at(@_refresh.expiration.to_i)
+        refresh_expires_at: Time.at(@_refresh.expiration.to_i),
       }
     end
 
@@ -195,7 +207,7 @@ module JWTSessions
       {
         csrf: csrf_token,
         access: access_token,
-        access_expires_at: Time.at(@_access.expiration.to_i)
+        access_expires_at: Time.at(@_access.expiration.to_i),
       }
     end
 
